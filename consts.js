@@ -7,4 +7,9 @@ const PRODUCTS_MESSAGES = {
     GET_PRODUCTS: 'Products data fetched successfully'
 }
 
-module.exports = { DB_NAMES, PRODUCTS_MESSAGES };
+const ACTIONS = {
+    UPDATE: 'update',
+    DELETE: 'delete'
+}
+
+module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS };
