@@ -1,9 +1,15 @@
 require('dotenv').config();
+const cors = require('cors');
 const express = require('express');
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const app = express();
-const { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS } = require('./consts');
+const { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES } = require('./consts');
 const Product = require('./models/productModel');
+const User = require('./models/userModel');
+
+app.use(cors());
 
 //to use ObjectId in mongoose find
 const ObjectId = mongoose.Types.ObjectId;
@@ -20,6 +26,64 @@ app.get('/', (req, res) => {
 
 app.get('/blog', (req, res) => {
     res.send('hello blogs');
+});
+
+//main routes
+
+//signup
+app.post('/signup', async (req, res) => {
+    try {
+        let users = await User.find({username: req.body.username});
+        if(users.length) {
+            return res.status(404).json({message: "Username already exists"});
+        } else {
+            users = await User.find({email: req.body.email});
+            if(users.length) {
+                return res.status(404).json({message: "Email already exists"});
+            }
+        }
+        if(!(req.body.name && req.body.username && req.body.password && req.body.email)) {
+            return res.status(404).json({message: "All fields are required"});
+        }
+        const encryptedPass = await bcrypt.hash(req.body.password, 10);
+        const userToBeCreated = {
+            name: req.body.name,
+            username: req.body.username,
+            email: req.body.email.toLowerCase(),
+            password: encryptedPass,
+        }
+        const token = jwt.sign(
+            userToBeCreated,
+            process.env.JWT_SECRET_KEY,
+            {
+                expiresIn: "1h",
+            }
+        )
+        await User.create(
+            {
+                ...userToBeCreated,
+                token: token
+            }
+        );
+        res.status(201).json({message: USERS_MESSAGES.ADD_USER});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: error.message});
+    }
+});
+//get users
+app.get('/get-users', async (req, res) => {
+    try {
+        const users = await User.find({});
+        const response = {
+            users: users,
+            message: USERS_MESSAGES.GET_USERS
+        }
+        res.status(200).json(response);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: error.message});
+    }
 });
 
 //products routes
@@ -67,7 +131,7 @@ app.post('/add-product',async (req, res) => {
         res.status(500).json({message: error.message});
     }
 });
-//update and delete a product by id
+//update and delete a product by id ++ commented code
 // app.post('/update-product/:id',async (req, res) => {
 //     try {
 //         const { id } = req.params;

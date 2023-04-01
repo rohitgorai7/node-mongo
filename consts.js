@@ -7,9 +7,14 @@ const PRODUCTS_MESSAGES = {
     GET_PRODUCTS: 'Products data fetched successfully'
 }
 
+const USERS_MESSAGES = {
+    ADD_USER: 'User created successfully',
+    GET_USERS: 'Users data fetched successfully'
+}
+
 const ACTIONS = {
     UPDATE: 'update',
     DELETE: 'delete'
 }
 
-module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS };
+module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES };
