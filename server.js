@@ -11,6 +11,7 @@ const User = require('./models/userModel');
 const ClientWhite = require('./models/clientWhite');
 const ClientBlack = require('./models/clientBlack');
 const auth = require('./middleware');
+// const nodeMailer = require('./controllers/mailer');
 app.use(cors());
 
 //to use ObjectId in mongoose find
@@ -29,6 +30,8 @@ app.get('/', auth, (req, res) => {
 app.get('/blog', auth,  (req, res) => {
     res.send('hello blogs');
 });
+
+// app.get('/mail', nodeMailer);
 
 //main routes
 
@@ -68,21 +71,21 @@ app.post('/login', async (req, res) => {
             res.status(400).json({message: "All inputs are required"});
         }
         const user = await User.findOne({username});
-        let token;
         if(user && (await bcrypt.compare(password, user.password))) {
             try {
-                token = jwt.sign(
+                const token = jwt.sign(
                     {_id: user._id, username: user.username},
                     process.env.JWT_SECRET_KEY,
                     {
                     expiresIn: "2h",
                     }
                 );
+                user.token = token;
             } catch (error) {
                 return res.status(400).json({message: "Invalid token"});
             }
             const checkWhite = await ClientWhite.findOneAndDelete({username: username});
-            if(checkWhite && (checkWhite.token !== token)) {
+            if(checkWhite && (checkWhite.token !== user.token)) {
                 const payload = {
                     username: checkWhite.username,
                     email: checkWhite.email,
@@ -94,10 +97,16 @@ app.post('/login', async (req, res) => {
             await ClientWhite.create({
                 username: user.username,
                 email: user.email,
-                token: token,
+                token: user.token,
                 userId: user._id
             });
-            return res.status(200).json({message:"Login successfull", user, token});
+            const response = {
+                name: user.name,
+                email: user.email,
+                username: user.username,
+                token: user.token
+            }
+            return res.status(200).json({message:"Login successfull", response});
         }
         return res.status(400).json({message: "Invalid Credentials"});
     } catch (error) {
