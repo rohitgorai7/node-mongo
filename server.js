@@ -8,7 +8,9 @@ const app = express();
 const { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES } = require('./consts');
 const Product = require('./models/productModel');
 const User = require('./models/userModel');
-
+const ClientWhite = require('./models/clientWhite');
+const ClientBlack = require('./models/clientBlack');
+const auth = require('./middleware');
 app.use(cors());
 
 //to use ObjectId in mongoose find
@@ -20,11 +22,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 //routes
 
-app.get('/', (req, res) => {
+app.get('/', auth, (req, res) => {
     res.send('hello node');
 });
 
-app.get('/blog', (req, res) => {
+app.get('/blog', auth,  (req, res) => {
     res.send('hello blogs');
 });
 
@@ -46,33 +48,66 @@ app.post('/signup', async (req, res) => {
             return res.status(404).json({message: "All fields are required"});
         }
         const encryptedPass = await bcrypt.hash(req.body.password, 10);
-        const userToBeCreated = {
+        const user = await User.create({
             name: req.body.name,
             username: req.body.username,
             email: req.body.email.toLowerCase(),
             password: encryptedPass,
-        }
-        const token = jwt.sign(
-            userToBeCreated,
-            process.env.JWT_SECRET_KEY,
-            {
-                expiresIn: "1h",
-            }
-        )
-        await User.create(
-            {
-                ...userToBeCreated,
-                token: token
-            }
-        );
-        res.status(201).json({message: USERS_MESSAGES.ADD_USER});
+        });
+        res.status(201).json({message: USERS_MESSAGES.ADD_USER, username: user.username});
     } catch (error) {
         console.log(error);
         res.status(500).json({message: error.message});
     }
 });
+//login
+app.post('/login', async (req, res) => {
+    try {
+        const {username, password} = req.body;
+        if(!(username && password)) {
+            res.status(400).json({message: "All inputs are required"});
+        }
+        const user = await User.findOne({username});
+        let token;
+        if(user && (await bcrypt.compare(password, user.password))) {
+            try {
+                token = jwt.sign(
+                    {_id: user._id, username: user.username},
+                    process.env.JWT_SECRET_KEY,
+                    {
+                    expiresIn: "2h",
+                    }
+                );
+            } catch (error) {
+                return res.status(400).json({message: "Invalid token"});
+            }
+            const checkWhite = await ClientWhite.findOneAndDelete({username: username});
+            if(checkWhite && (checkWhite.token !== token)) {
+                const payload = {
+                    username: checkWhite.username,
+                    email: checkWhite.email,
+                    token: checkWhite.token,
+                    userId: checkWhite.userId
+                }
+                await ClientBlack.create(payload);
+            }
+            await ClientWhite.create({
+                username: user.username,
+                email: user.email,
+                token: token,
+                userId: user._id
+            });
+            return res.status(200).json({message:"Login successfull", user, token});
+        }
+        return res.status(400).json({message: "Invalid Credentials"});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: error.message});
+    }
+});
+
 //get users
-app.get('/get-users', async (req, res) => {
+app.get('/get-users', auth, async (req, res) => {
     try {
         const users = await User.find({});
         const response = {
@@ -88,7 +123,7 @@ app.get('/get-users', async (req, res) => {
 
 //products routes
 //get all products
-app.get('/get-products', async (req, res) => {
+app.get('/get-products', auth, async (req, res) => {
     try {
         const products = await Product.find({});
         const response = {
@@ -102,7 +137,7 @@ app.get('/get-products', async (req, res) => {
     }
 });
 //get product by id
-app.get('/get-product/:id',async (req, res) => {
+app.get('/get-product/:id', auth, async (req, res) => {
     try {
         const { id } = req.params;
         const o_id = new ObjectId(id);
@@ -122,7 +157,7 @@ app.get('/get-product/:id',async (req, res) => {
     }
 });
 // add single product
-app.post('/add-product',async (req, res) => {
+app.post('/add-product', auth, async (req, res) => {
     try {
         await Product.create(req.body);
         res.status(200).json({message: PRODUCTS_MESSAGES.ADD_PRODUCT});
@@ -164,7 +199,7 @@ app.post('/add-product',async (req, res) => {
 //         res.status(500).json({message: error.message});
 //     }
 // });
-app.post('/update-product',async (req, res) => {
+app.post('/update-product', auth, async (req, res) => {
     try {
         const id = req.body._id;
         const action = req.body.action;
