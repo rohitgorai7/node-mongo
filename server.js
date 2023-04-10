@@ -106,7 +106,7 @@ app.post('/login', async (req, res) => {
                 username: user.username,
                 token: user.token
             }
-            return res.status(200).json({message:"Login successfull", response});
+            return res.status(200).json({message:"Login successfull", user: {...response}});
         }
         return res.status(400).json({message: "Invalid Credentials"});
     } catch (error) {
