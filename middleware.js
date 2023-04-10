@@ -11,7 +11,7 @@ const verifyToken = async (req, res, next) => {
     }
     const user = await ClientBlack.findOne({token: token});
     if(user) {
-        return res.status(400).json({message: "User session expired"});
+        return res.status(401).json({message: "User session expired"});
     }
     try {
         const decoded = jwt.verify(token, config.JWT_SECRET_KEY);
