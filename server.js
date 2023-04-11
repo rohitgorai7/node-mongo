@@ -49,9 +49,9 @@ app.post('/signup', async (req, res) => {
         }
         if(!(req.body.name && req.body.username && req.body.password && req.body.email)) {
             return res.status(404).json({message: "All fields are required"});
-        }        
-        const passwordBuff = new Buffer(req.body.password, 'base64');
-        const encryptedPass = await bcrypt.hash(passwordBuff.toString('ascii'), 10);
+        }
+        const passwordBuff = Buffer.from(req.body.password, 'base64').toString();
+        const encryptedPass = await bcrypt.hash(passwordBuff, 10);
         const user = await User.create({
             name: req.body.name,
             username: req.body.username,
@@ -72,8 +72,8 @@ app.post('/login', async (req, res) => {
             res.status(400).json({message: "All inputs are required"});
         }
         const user = await User.findOne({username});
-        const passwordBuff = new Buffer(password, 'base64');
-        if(user && (await bcrypt.compare(passwordBuff.toString('ascii'), user.password))) {
+        const passwordBuff = Buffer.from(password, 'base64').toString();
+        if(user && (await bcrypt.compare(passwordBuff, user.password))) {
             try {
                 const token = jwt.sign(
                     {_id: user._id, username: user.username},
@@ -117,10 +117,38 @@ app.post('/login', async (req, res) => {
     }
 });
 
+//logout
+app.post('/logout', auth, async (req, res) => {
+    try {
+        const {user} = req;
+        const logoutUser = await ClientWhite.findOneAndDelete({username: user.username});
+        const payload = {
+            username: logoutUser.username,
+            email: logoutUser.email,
+            token: logoutUser.token,
+            userId: logoutUser._id
+        }
+        await ClientBlack.create(payload);
+        const response = {
+            message: "Logout successfull"
+        }
+        res.status(200).json(response);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: error.message});
+    }
+});
+
 //get users
 app.get('/get-users', auth, async (req, res) => {
     try {
-        const users = await User.find({});
+        const projection = {
+            createdAt: 1,
+            email: 1,
+            name: 1,
+            username: 1
+        }
+        const users = await User.find({}, projection);
         const response = {
             users: users,
             message: USERS_MESSAGES.GET_USERS
