@@ -49,8 +49,9 @@ app.post('/signup', async (req, res) => {
         }
         if(!(req.body.name && req.body.username && req.body.password && req.body.email)) {
             return res.status(404).json({message: "All fields are required"});
-        }
-        const encryptedPass = await bcrypt.hash(req.body.password, 10);
+        }        
+        const passwordBuff = new Buffer(req.body.password, 'base64');
+        const encryptedPass = await bcrypt.hash(passwordBuff.toString('ascii'), 10);
         const user = await User.create({
             name: req.body.name,
             username: req.body.username,
@@ -71,7 +72,8 @@ app.post('/login', async (req, res) => {
             res.status(400).json({message: "All inputs are required"});
         }
         const user = await User.findOne({username});
-        if(user && (await bcrypt.compare(password, user.password))) {
+        const passwordBuff = new Buffer(password, 'base64');
+        if(user && (await bcrypt.compare(passwordBuff.toString('ascii'), user.password))) {
             try {
                 const token = jwt.sign(
                     {_id: user._id, username: user.username},
