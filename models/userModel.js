@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { USER_STATUS } = require('../consts');
 
 const usersSchema = mongoose.Schema(
     {        
@@ -20,8 +21,13 @@ const usersSchema = mongoose.Schema(
             required: [true, "Please enter a proper username"],
             unique: true
         },
-        token: {
-            type: String
+        status: {
+            type: String,
+            default: USER_STATUS.ACTIVE
+        },
+        isLoggedIn: {
+            type: Boolean,
+            default: true
         }
     },
     {

@@ -72,6 +72,9 @@ app.post('/login', async (req, res) => {
             res.status(400).json({message: "All inputs are required"});
         }
         const user = await User.findOne({username});
+        if(!user) {
+            return res.status(400).json({message: "Cannot find user"});
+        }
         const passwordBuff = Buffer.from(password, 'base64').toString();
         if(user && (await bcrypt.compare(passwordBuff, user.password))) {
             try {
@@ -86,6 +89,7 @@ app.post('/login', async (req, res) => {
             } catch (error) {
                 return res.status(400).json({message: "Invalid token"});
             }
+            await User.updateOne({username: username}, {$set: {isLoggedIn: true}});
             const checkWhite = await ClientWhite.findOneAndDelete({username: username});
             if(checkWhite && (checkWhite.token !== user.token)) {
                 const payload = {
@@ -106,7 +110,8 @@ app.post('/login', async (req, res) => {
                 name: user.name,
                 email: user.email,
                 username: user.username,
-                token: user.token
+                token: user.token,
+                userId: user._id
             }
             return res.status(200).json({message:"Login successfull", user: {...response}});
         }
@@ -122,6 +127,7 @@ app.post('/logout', auth, async (req, res) => {
     try {
         const {user} = req;
         const logoutUser = await ClientWhite.findOneAndDelete({username: user.username});
+        await User.updateOne({username: user.username}, {$set: {isLoggedIn: false}});
         const payload = {
             username: logoutUser.username,
             email: logoutUser.email,
@@ -139,6 +145,36 @@ app.post('/logout', auth, async (req, res) => {
     }
 });
 
+//update user
+
+app.post('/update-user', auth, async (req, res) => {
+    try {
+        const id = req.body._id;
+        const action = req.body.action;
+        let user;
+        if(action === ACTIONS.STATUS) {
+            const payload = {
+                status: req.body.status
+            }
+            user = await User.findByIdAndUpdate(id, payload);
+        // } else if(action === ACTIONS.DELETE) {
+        //     product = await Product.findByIdAndDelete(id);
+        } else {
+            return res.status(404).json({message: 'Unidentified action'});
+        }
+        if(!user) {
+            return res.status(404).json({message: `cannot find user with id - ${id}`});
+        }
+        const response = {
+            message: 'User updated successfully'
+        }
+        res.status(200).json(response);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: error.message});
+    }
+});
+
 //get users
 app.get('/get-users', auth, async (req, res) => {
     try {
@@ -146,7 +182,9 @@ app.get('/get-users', auth, async (req, res) => {
             createdAt: 1,
             email: 1,
             name: 1,
-            username: 1
+            username: 1,
+            status: 1,
+            isLoggedIn: 1
         }
         const users = await User.find({}, projection);
         const response = {
