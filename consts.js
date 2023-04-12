@@ -14,7 +14,13 @@ const USERS_MESSAGES = {
 
 const ACTIONS = {
     UPDATE: 'update',
-    DELETE: 'delete'
+    DELETE: 'delete',
+    STATUS: 'status'
 }
 
-module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES };
+const USER_STATUS = {
+    ACTIVE: 'active',
+    INACTIVE: 'inactive'
+}
+
+module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES, USER_STATUS };

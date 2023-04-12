@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { USER_STATUS } = require('../consts');
 
 const clientWhiteListSchema = mongoose.Schema(
     {
@@ -14,6 +15,14 @@ const clientWhiteListSchema = mongoose.Schema(
         },
         userId: {
             type: String
+        },
+        status: {
+            type: String,
+            default: USER_STATUS.ACTIVE
+        },
+        isLoggedIn: {
+            type: Boolean,
+            default: true
         }
     },
     {
