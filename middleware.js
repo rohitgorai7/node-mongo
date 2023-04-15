@@ -10,7 +10,7 @@ const verifyToken = async (req, res, next) => {
     const token = req.body.token || req.query.token || req.headers["x-access-token"] || req.headers["token"];
     if(!token) {
         return res.status(401).json({message:"A token is required for authentication"});
-    }    
+    }
     try {
         const decoded = jwt.verify(token, config.JWT_SECRET_KEY);
         req.user = decoded;
