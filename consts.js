@@ -20,7 +20,8 @@ const ACTIONS = {
 
 const USER_STATUS = {
     ACTIVE: 'active',
-    INACTIVE: 'inactive'
+    INACTIVE: 'inactive',
+    DELETED: 'deleted'
 }
 
 module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES, USER_STATUS };
