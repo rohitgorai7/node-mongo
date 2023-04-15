@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const app = express();
-const { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES } = require('./consts');
+const { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES, USER_STATUS } = require('./consts');
 const Product = require('./models/productModel');
 const User = require('./models/userModel');
 const ClientWhite = require('./models/clientWhite');
@@ -72,7 +72,7 @@ app.post('/login', async (req, res) => {
         if(!(username && password)) {
             res.status(400).json({message: "All inputs are required"});
         }
-        const user = await User.findOne({username});
+        const user = await User.findOne({username: username, status: USER_STATUS.ACTIVE});
         if(!user) {
             return res.status(400).json({message: "Username incorrect, try again"});
         }
