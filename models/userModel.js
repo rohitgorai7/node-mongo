@@ -28,6 +28,10 @@ const usersSchema = mongoose.Schema(
         isLoggedIn: {
             type: Boolean,
             default: true
+        },
+        userType: {
+            type: String,
+            default: 'user'
         }
     },
     {

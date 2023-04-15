@@ -57,6 +57,7 @@ app.post('/signup', async (req, res) => {
             username: req.body.username,
             email: req.body.email.toLowerCase(),
             password: encryptedPass,
+            userType: 'user',
         });
         res.status(201).json({message: USERS_MESSAGES.ADD_USER, username: user.username});
     } catch (error) {
@@ -73,13 +74,13 @@ app.post('/login', async (req, res) => {
         }
         const user = await User.findOne({username});
         if(!user) {
-            return res.status(400).json({message: "Cannot find user"});
+            return res.status(400).json({message: "Username incorrect, try again"});
         }
         const passwordBuff = Buffer.from(password, 'base64').toString();
         if(user && (await bcrypt.compare(passwordBuff, user.password))) {
             try {
                 const token = jwt.sign(
-                    {_id: user._id, username: user.username},
+                    {_id: user._id, username: user.username, userType: user.userType},
                     process.env.JWT_SECRET_KEY,
                     {
                     expiresIn: "2h",
@@ -111,11 +112,40 @@ app.post('/login', async (req, res) => {
                 email: user.email,
                 username: user.username,
                 token: user.token,
-                userId: user._id
+                userId: user._id,
+                userType: user.userType,
+                isLoggedIn: true
             }
             return res.status(200).json({message:"Login successfull", user: {...response}});
         }
-        return res.status(400).json({message: "Invalid Credentials"});
+        return res.status(400).json({message: "Invalid password"});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: error.message});
+    }
+});
+
+//get user data
+app.get('/get-user-data', auth, async (req, res) => {
+    try {
+        if(req.query.cached) {
+            const userData = await ClientWhite.findOne({token: req.body.token || req.query.token || req.headers["x-access-token"] || req.headers["token"]});
+            if(!userData) {
+                return res.status(401).json({message: "Unauthorized"});
+            }
+            const user = await User.findOne({username: userData.username}, {name: 1, userType: 1});
+            const response = {
+                name: user.name,
+                userType: user.userType,
+                email: userData.email,
+                username: userData.username,
+                token: userData.token,
+                userId: userData.userId,
+                isLoggedIn: userData.isLoggedIn
+            }
+            return res.status(200).json(response);
+        }
+        return res.status(404).json({message: "Something went wrong"});
     } catch (error) {
         console.log(error);
         res.status(500).json({message: error.message});
@@ -153,6 +183,9 @@ app.post('/update-user', auth, async (req, res) => {
         const action = req.body.action;
         let user;
         if(action === ACTIONS.STATUS) {
+            if(req.user.userType !== 'management') {
+                return res(404).json({message: "Unauthorized action"});
+            }
             const payload = {
                 status: req.body.status
             }
