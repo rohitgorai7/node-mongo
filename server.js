@@ -342,6 +342,25 @@ app.post('/update-product', auth, async (req, res) => {
     }
 });
 
+//send sms
+
+app.post('/verify-user', async (req, res) => {
+    try {
+        const message = require('./controllers/message');
+        const to = req.body.to;
+        const text = '1234';
+        try {
+            message(to, text);
+            res.status(200).json({message: 'sent'});
+        } catch (error) {
+            res.status(404).json({message: 'error'});
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: error.message});
+    }
+});
+
 mongoose.set('strictQuery', false);
 
 mongoose.connect(`mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@${process.env.DB_CLUSTER}/${DB_NAMES.node}?retryWrites=true&w=majority`)
