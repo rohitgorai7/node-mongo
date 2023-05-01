@@ -23,8 +23,8 @@ const sendMessage = (to, text) => {
     url: 'https://phonenumbervalidatefree.p.rapidapi.com/ts_PhoneNumberValidateTest.jsp',
     params: {number: to, country: 'UY'},
     headers: {
-        'X-RapidAPI-Key': '438a4efff5msh2ed1867b0985d86p103321jsnb38485182c18',
-        'X-RapidAPI-Host': 'phonenumbervalidatefree.p.rapidapi.com'
+        'X-RapidAPI-Key': process.env.XRapidAPIKey,
+        'X-RapidAPI-Host': process.env.XRapidAPIHost
     }
     };
 
