@@ -5,12 +5,13 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const app = express();
-const { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES, USER_STATUS } = require('./consts');
+const { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES, USER_STATUS, MESSAGES } = require('./consts');
 const Product = require('./models/productModel');
 const User = require('./models/userModel');
 const ClientWhite = require('./models/clientWhite');
 const ClientBlack = require('./models/clientBlack');
 const auth = require('./middleware');
+const Chat = require('./models/chat');
 // const nodeMailer = require('./controllers/mailer');
 app.use(cors());
 
@@ -134,18 +135,20 @@ app.get('/get-user-data', auth, async (req, res) => {
                 return res.status(401).json({message: "Unauthorized"});
             }
             const user = await User.findOne({username: userData.username}, {name: 1, userType: 1});
-            const response = {
-                name: user.name,
-                userType: user.userType,
-                email: userData.email,
-                username: userData.username,
-                token: userData.token,
-                userId: userData.userId,
-                isLoggedIn: userData.isLoggedIn
+            if(user) {
+                const response = {
+                    name: user.name,
+                    userType: user.userType,
+                    email: userData.email,
+                    username: userData.username,
+                    token: userData.token,
+                    userId: userData.userId,
+                    isLoggedIn: userData.isLoggedIn
+                }
+                return res.status(200).json(response);
             }
-            return res.status(200).json(response);
         }
-        return res.status(404).json({message: "Something went wrong"});
+        return res.status(401).json({message: "Something went wrong"});
     } catch (error) {
         console.log(error);
         res.status(500).json({message: error.message});
@@ -358,6 +361,99 @@ app.post('/verify-user', async (req, res) => {
     } catch (error) {
         console.log(error);
         res.status(500).json({message: error.message});
+    }
+});
+
+app.get('/get-chat-users', auth, async (req, res) => {
+    try {
+        const projection = {
+            _id: 1,
+            createdAt: 1,
+            email: 1,
+            name: 1,
+            username: 1,
+            status: 1,
+            isLoggedIn: 1
+        }
+        let users = await User.find({}, projection);
+        const filterUsers = users.filter(user => user._id.toString() !== req.user._id);
+        const messages = await Chat.find({});
+        const response = {
+            users: filterUsers.map(user => {
+                const getChat = messages.find(message => ((user._id.toString() === message.participants[0] && req.user._id === message.participants[1]) || (user._id.toString() === message.participants[1] && req.user._id === message.participants[0])));
+                const data = {...user._doc, lastMessage: getChat?.messages?.[getChat?.messages?.length-1] || {}};
+                return data;
+            }),
+            message: USERS_MESSAGES.GET_USERS
+        }
+        return res.status(200).json(response);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({message: error.message});
+    }
+});
+
+app.get('/get-messages', auth, async (req, res) => {
+    try {
+        const {to} = req.query;
+        const {name} = await User.findOne({_id: to});
+        const {_id} = req.user;
+        const chats = await Chat.find({});
+        const chat = chats.find(chat => chat.participants?.includes(to) && chat.participants?.includes(_id));
+        console.log(to,_id,chat);
+        const data = {};
+        if(chat?.participants){
+            data._id = chat._id;
+            data.participants = chat.participants;
+            data.messages = chat.messages;
+            data.createdAt = chat.createdAt;
+            data.updatedAt = chat.updatedAt;
+            data.toFrom = to+','+_id;
+        }
+        data.name = name;
+        const response = {
+            data,
+            message: MESSAGES.GET_MESSAGES
+        }
+        return res.status(200).json(response);
+    } catch (error) {
+        return res.status(500).json({message: error.message});
+    }
+});
+
+app.post('/send-chat', auth, async (req, res) => {
+    try {
+        const {to, message, messageType} = req.body;
+        if(to && message && messageType) {
+            const from = req.user._id;
+            console.log(to,from);
+            const chats = await Chat.find({});
+            const  chat = chats.find(chat => chat.participants?.includes(to) && chat.participants?.includes(from));
+            console.log(chat);
+            const msg = {
+                message: message,
+                messageType: messageType,
+                sender: from,
+                receiver: to
+            }
+            console.log('/send-chat',chat);
+            if(chat?.participants){
+                console.log(chat);
+                const msgs = chat.messages;
+                msgs.push(msg);
+                await Chat.findByIdAndUpdate(chat._id, {messages: msgs});
+                return res.status(200).json({message:'Send successfully'});
+            }
+            // if(!chat?.participants?.includes(to, from)) {
+                await Chat.create({participants: [from, to], messages: [msg]});
+                return res.status(200).json({message:'Send successfully'});
+            // }
+        } else {
+            res.status(404).json({message: 'message required'});
+        }
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({message: error.message});
     }
 });
 
