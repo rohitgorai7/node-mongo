@@ -12,6 +12,11 @@ const USERS_MESSAGES = {
     GET_USERS: 'Users data fetched successfully'
 }
 
+const MESSAGES = {
+    SENT_MESSAGE: 'Message sent successfully',
+    GET_MESSAGES: 'Messages data fetched successfully'
+}
+
 const ACTIONS = {
     UPDATE: 'update',
     DELETE: 'delete',
@@ -24,4 +29,4 @@ const USER_STATUS = {
     DELETED: 'deleted'
 }
 
-module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES, USER_STATUS };
+module.exports = { DB_NAMES, PRODUCTS_MESSAGES, ACTIONS, USERS_MESSAGES, USER_STATUS, MESSAGES };

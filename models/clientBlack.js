@@ -3,9 +3,9 @@ const { USER_STATUS } = require('../consts');
 
 const clientBlackListSchema = mongoose.Schema(
     {
-        email: { 
+        email: {
             type: String
-        },    
+        },
         username: {
             type: String
         },

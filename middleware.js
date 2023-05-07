@@ -18,7 +18,7 @@ const verifyToken = async (req, res, next) => {
         return res.status(401).json({message:"Invalid Token"});
     }
     let user = await User.findOne({username: req.user.username});
-    if(user.status === USER_STATUS.INACTIVE) {
+    if(user && user.status && (user.status === USER_STATUS.INACTIVE)) {
         return res.status(401).json({message: "User access revoked, contact admin"});
     }
     user = await ClientBlack.findOne({token: token});
