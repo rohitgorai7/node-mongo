@@ -381,7 +381,7 @@ app.get('/get-chat-users', auth, async (req, res) => {
         const response = {
             users: filterUsers.map(user => {
                 const getChat = messages.find(message => ((user._id.toString() === message.participants[0] && req.user._id === message.participants[1]) || (user._id.toString() === message.participants[1] && req.user._id === message.participants[0])));
-                const data = {...user._doc, lastMessage: getChat?.messages?.[getChat?.messages?.length-1] || {}};
+                const data = {...user._doc, lastMessage: getChat ? getChat.lastMessage : {}};
                 return data;
             }),
             message: USERS_MESSAGES.GET_USERS
@@ -396,20 +396,22 @@ app.get('/get-chat-users', auth, async (req, res) => {
 app.get('/get-messages', auth, async (req, res) => {
     try {
         const {to} = req.query;
-        const {name} = await User.findOne({_id: to});
-        const {_id} = req.user;
-        const chats = await Chat.find({});
-        const chat = chats.find(chat => chat.participants?.includes(to) && chat.participants?.includes(_id));
-        console.log(to,_id,chat);
+        const user = await User.findOne({_id: to});
+        const {name} = user ? user : '';
         const data = {};
-        if(chat?.participants){
-            data._id = chat._id;
-            data.participants = chat.participants;
-            data.messages = chat.messages;
-            data.createdAt = chat.createdAt;
-            data.updatedAt = chat.updatedAt;
-            data.toFrom = to+','+_id;
-        }
+        if(name) {
+            const {_id} = req.user;
+            const chats = await Chat.find({});
+            const chat = chats.find(chat => chat.participants?.includes(to) && chat.participants?.includes(_id));
+            if(chat?.participants){
+                data._id = chat._id;
+                data.participants = chat.participants;
+                data.messages = chat.messages;
+                data.createdAt = chat.createdAt;
+                data.updatedAt = chat.updatedAt;
+                data.toFrom = to+','+_id;
+            }
+        }        
         data.name = name;
         const response = {
             data,
@@ -426,28 +428,22 @@ app.post('/send-chat', auth, async (req, res) => {
         const {to, message, messageType} = req.body;
         if(to && message && messageType) {
             const from = req.user._id;
-            console.log(to,from);
             const chats = await Chat.find({});
             const  chat = chats.find(chat => chat.participants?.includes(to) && chat.participants?.includes(from));
-            console.log(chat);
             const msg = {
                 message: message,
                 messageType: messageType,
                 sender: from,
                 receiver: to
             }
-            console.log('/send-chat',chat);
             if(chat?.participants){
-                console.log(chat);
                 const msgs = chat.messages;
                 msgs.push(msg);
-                await Chat.findByIdAndUpdate(chat._id, {messages: msgs});
+                await Chat.findByIdAndUpdate(chat._id, {messages: msgs, lastMessage: {...msg, createdAt: new Date(Date.now())}});
                 return res.status(200).json({message:'Send successfully'});
             }
-            // if(!chat?.participants?.includes(to, from)) {
-                await Chat.create({participants: [from, to], messages: [msg]});
-                return res.status(200).json({message:'Send successfully'});
-            // }
+            await Chat.create({participants: [from, to], messages: [msg], lastMessage: {...msg, createdAt: new Date(Date.now())}});
+            return res.status(200).json({message:'Send successfully'});
         } else {
             res.status(404).json({message: 'message required'});
         }
