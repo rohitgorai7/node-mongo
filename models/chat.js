@@ -5,10 +5,14 @@ const chatSchema = mongoose.Schema(
         participants: {
             type: Object
         },
+        lastMessage: {
+            type: Object
+        },
         messages: [
             {
                 seenAt: {
-                    type: String
+                    type: String,
+                    default: ''
                 },
                 message: {
                     type: String || Object
@@ -24,7 +28,7 @@ const chatSchema = mongoose.Schema(
                 },
                 createdAt: {
                     type: String,
-                    default: new Date()
+                    default: new Date(Date.now())
                 }
             }
         ]
